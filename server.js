@@ -22,7 +22,7 @@ app.use(express.json({ limit: '20kb' }));
 app.use(express.static(path.join(root, 'public')));
 
 const instructions = `Sen WebForge içindeki genel amaçlı bir yapay zekâ asistanısın. Türkçe konuş, doğal ve yardımcı ol. Kullanıcı normal bir soru soruyorsa, sohbet ediyorsa veya bir şeyin açıklamasını istiyorsa doğrudan cevap ver; web sitesi üretmeye çalışma. Bu durumda yalnızca {"type":"chat","reply":"cevap"} JSON'u döndür.
-Kullanıcı açıkça bir web sitesi oluşturmanı, mevcut siteyi değiştirmeyi veya kod üretmeni isterse doğrudan sonucu üret; nasıl yapılacağını anlatma. Bu durumda yalnızca {"type":"site","html":"tam bağımsız HTML belgesi"} JSON'u döndür.
+Kullanıcı açıkça bir web sitesi oluşturmanı, mevcut siteyi değiştirmeyi veya kod üretmeni isterse doğrudan sonucu üret; nasıl yapılacağını anlatma. Bu durumda yalnızca {"type":"site","html":"tam bağımsız HTML belgesi"} JSON'u döndür. Eğer kullanıcıya CURRENT WEBSITE bölümünde bir mevcut HTML verildiyse, yeni bir boş sayfa oluşturma. Verilen HTML'nin tamamını düzenleyerek geri döndür; mevcut sayfanın tasarımını, ürünlerini, sepetini ve diğer özelliklerini koru. İstek bir ekleme veya değişiklikse sadece o değişikliği mevcut siteye entegre et. Örneğin mevcut mağazaya ödeme butonu istendiğinde ürünleri ve sepeti silme; ödeme butonunu ve uygun ödeme akışını aynı siteye ekle. Sohbet isteği gelse bile mevcut site bağlamı verilmişse site değişikliği değilse normal sohbet yanıtı verilebilir.
 Site üretirken isteği başlık olarak kopyalama. Konuya uygun gerçek başlıklar, modern responsive tasarım ve işe yarayan etkileşimler üret. İstenen butonlar, formlar, arama, menüler, sepet vb. gerçekten JavaScript ile çalışsın. CSS <style>, JavaScript <script> içinde olsun. Arka plan/renk değişikliği istenirse uygula. Gereksiz açıklama, yönerge veya kod dışı metin ekleme. HTML çıktısı dışa aktarılabilir ve tamamlanmış olsun. JSON dışında hiçbir şey döndürme.`
 
 app.get('/api/health', (_req, res) => {
@@ -31,6 +31,7 @@ app.get('/api/health', (_req, res) => {
 
 app.post('/api/generate', async (req, res) => {
   const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim() : '';
+  const currentHtml = typeof req.body?.currentHtml === 'string' ? req.body.currentHtml.slice(0, 90000) : '';
   if (!prompt) return res.status(400).json({ error: 'Lütfen site fikrini yaz.' });
   if (prompt.length > 4000) return res.status(400).json({ error: 'İstek en fazla 4000 karakter olabilir.' });
   if (!process.env.GEMINI_API_KEY) {
@@ -48,7 +49,7 @@ app.post('/api/generate', async (req, res) => {
       },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: instructions }] },
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        contents: [{ role: 'user', parts: [{ text: currentHtml ? `CURRENT WEBSITE HTML (preserve and modify this exact site):\\n${currentHtml}\\n\\nUSER REQUEST: ${prompt}` : prompt }] }],
         generationConfig: {
           responseMimeType: 'application/json',
           maxOutputTokens: 8000,
