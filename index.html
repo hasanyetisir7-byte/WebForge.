@@ -109,6 +109,18 @@ async function generateFromPrompt(){
    const response=await fetch((location.hostname.endsWith('github.io') ? 'https://webforge-ai-hasanyetisir7.onrender.com' : '')+'/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
    const data=await response.json();
    if(!response.ok) throw new Error(data?.error || ('AI sunucusu yanıt vermedi ('+response.status+').'));
+   if(typeof data.html==='string' && data.html.trim()){
+     snapshot();
+     customHTML=data.html;
+     $('codeEditor').value=data.html;
+     $('page').innerHTML=data.html;
+     $('page').style.background='';
+     $('page').style.color='';
+     showMode('code');
+     closeAi();
+     toast('AI kodu oluşturdu! Kod sekmesinden inceleyip dışa aktarabilirsin.');
+     return;
+   }
    if(!Array.isArray(data.blocks)||!data.blocks.length) throw new Error('AI yanıtında geçerli bileşenler bulunamadı.');
    const allowed=new Set(['hero','text','cards','image']);
    const cleaned=data.blocks.slice(0,20).filter(b=>b&&allowed.has(b.kind)).map((b,i)=>{
@@ -119,7 +131,10 @@ async function generateFromPrompt(){
      return {id,kind:'image',label:String(b.label||'Görsel alanı').slice(0,150)};
    });
    if(!cleaned.length) throw new Error('AI düzenlenebilir bir taslak döndürmedi.');
-   snapshot();blocks=cleaned;selectedId=blocks[0]?.id||null;customHTML=null;render();showMode('design');closeAi();setWorkspaceMode('mix');toast('Gerçek AI taslağı hazır! Şimdi kendin düzenleyebilirsin.');
+   snapshot();blocks=cleaned;selectedId=blocks[0]?.id||null;customHTML=null;render();
+   if(data.style?.background && /^#[0-9a-fA-F]{6}$/.test(data.style.background)) $('page').style.background=data.style.background;
+   if(data.style?.color && /^#[0-9a-fA-F]{6}$/.test(data.style.color)) $('page').style.color=data.style.color;
+   showMode('design');closeAi();setWorkspaceMode('mix');toast('Gerçek AI taslağı hazır! Şimdi kendin düzenleyebilirsin.');
  }catch(err){
    console.warn('WebForge AI:',err);
    toast(err?.message || 'AI taslağı oluşturulamadı. Lütfen tekrar dene.');
