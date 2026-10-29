@@ -18,7 +18,8 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
-app.use(express.json({ limit: '20kb' }));
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '120kb' }));
 app.use(express.static(path.join(root, 'public')));
 
 const instructions = `Sen WebForge içindeki genel amaçlı bir yapay zekâ asistanısın. Türkçe konuş, doğal ve yardımcı ol. Kullanıcı normal bir soru soruyorsa, sohbet ediyorsa veya bir şeyin açıklamasını istiyorsa doğrudan cevap ver; web sitesi üretmeye çalışma. Bu durumda yalnızca {"type":"chat","reply":"cevap"} JSON'u döndür.
@@ -38,6 +39,18 @@ app.post('/api/generate', async (req, res) => {
   const currentHtml = typeof req.body?.currentHtml === 'string' ? req.body.currentHtml.slice(0, 90000) : '';
   if (!prompt) return res.status(400).json({ error: 'Lütfen site fikrini yaz.' });
   if (prompt.length > 4000) return res.status(400).json({ error: 'İstek en fazla 4000 karakter olabilir.' });
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== usageDay) {
+    dailyUsage.clear();
+    usageDay = today;
+  }
+  const clientKey = String(req.ip || 'unknown').slice(0, 100);
+  const used = dailyUsage.get(clientKey) || 0;
+  if (used >= DAILY_LIMIT) {
+    return res.status(429).json({ error: 'Bugünkü ücretsiz kullanım hakkın doldu (günlük 20 istek). Yarın tekrar deneyebilirsin.', limit: DAILY_LIMIT, remaining: 0 });
+  }
+  dailyUsage.set(clientKey, used + 1);
+
   if (!process.env.GEMINI_API_KEY) {
     return res.status(503).json({ error: 'Render sunucusunda GEMINI_API_KEY ayarlanmamış.' });
   }
