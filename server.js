@@ -79,7 +79,10 @@ app.post('/api/generate', async (req, res) => {
     const allowed = new Set(['hero', 'text', 'cards', 'image']);
     const blocks = data.blocks.filter(b => b && allowed.has(b.kind)).slice(0, 8);
     if (!blocks.length) throw new Error('Düzenlenebilir blok bulunamadı.');
-    const style = {};\n    if (typeof data.style?.background === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.style.background)) style.background = data.style.background;\n    if (typeof data.style?.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.style.color)) style.color = data.style.color;\n    return res.json({ blocks, style });
+    const style = {};
+    if (typeof data.style?.background === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.style.background)) style.background = data.style.background;
+    if (typeof data.style?.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(data.style.color)) style.color = data.style.color;
+    return res.json({ blocks, style });
   } catch (error) {
     console.error('WebForge generation error:', error?.status || '', error?.message || error);
     const status = Number(error?.status || 0);
