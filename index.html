@@ -113,10 +113,11 @@ async function generateFromPrompt(){
      snapshot();
      customHTML=data.html;
      $('codeEditor').value=data.html;
-     $('page').innerHTML=data.html;
-     $('page').style.background='';
-     $('page').style.color='';
-     showMode('code');
+     $('page').innerHTML='<iframe id="generatedSiteFrame" title="Oluşturulan site önizlemesi" sandbox="allow-scripts allow-forms allow-popups" style="display:block;width:100%;min-height:850px;height:85vh;border:0;background:white"></iframe>';
+     $('generatedSiteFrame').srcdoc=data.html;
+     $('page').style.background='white';
+     $('page').style.color='#17233a';
+     showMode('design');
      closeAi();
      toast('AI kodu oluşturdu! Kod sekmesinden inceleyip dışa aktarabilirsin.');
      return;
