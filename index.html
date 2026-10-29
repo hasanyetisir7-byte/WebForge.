@@ -99,6 +99,9 @@ function setWorkspaceMode(next){
 async function generateFromPrompt(){
  const prompt=$('aiPrompt').value.trim();
  if(!prompt){toast('Önce nasıl bir site istediğini yaz.');return}
+ // İstek gönderildiğinde giriş alanlarını temizle; istek değişkende korunur.
+ $('aiPrompt').value='';
+ $('aiPromptModal').value='';
  const btn=document.querySelector('.ai-box button');
  const original=btn?.textContent;
  if(btn){btn.disabled=true;btn.textContent='✦ AI taslağı hazırlıyor…'}
