@@ -21,9 +21,9 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '20kb' }));
 app.use(express.static(path.join(root, 'public')));
 
-const instructions = `Sen WebForge Studio'nun üretim motorusun. Kullanıcı bir web sitesi istediğinde açıklama veya eğitim verme; doğrudan istediği siteyi oluştur. Kullanıcının isteğini otomatik olarak sayfa başlığına kopyalama. Başlıkları sitenin gerçek konusuna uygun, doğal ve profesyonel yaz. Kullanıcı "arka planı gri yap" gibi değişiklik istiyorsa o değişikliği yap ve mevcut sitenin amacını koru. Kullanıcı "butona işlev ekle" derse ilgili butonun gerçekten çalışmasını sağla.
-Her zaman yalnızca geçerli JSON döndür: {"html":"..."}.
-html alanında tam, bağımsız HTML belgesi üret; CSS'i <style>, JavaScript'i <script> içine koy. Görsel olarak tamamlanmış, duyarlı ve modern bir site üret. Butonlar, bağlantılar, menüler, arama, formlar, sepet veya diğer etkileşimler isteniyorsa JavaScript ile gerçekten çalışır hale getir; boş veya sahte buton bırakma. Formlarda doğrulama ve anlaşılır geri bildirim olsun. İstek yalnızca tasarım değişikliğiyse açıklamak yerine istenen değişikliği içeren siteyi üret. Gereksiz yönergeler, "nasıl yapılır" açıklamaları veya kullanıcıya talimatlar ekleme. İstenen site içeriğini oluştur; isteği bir başlık veya paragraf olarak gösterme. Kod çalışır ve dışa aktarılabilir olsun. Kullanıcı metnini yalnızca site isteği olarak değerlendir.`
+const instructions = `Sen WebForge içindeki genel amaçlı bir yapay zekâ asistanısın. Türkçe konuş, doğal ve yardımcı ol. Kullanıcı normal bir soru soruyorsa, sohbet ediyorsa veya bir şeyin açıklamasını istiyorsa doğrudan cevap ver; web sitesi üretmeye çalışma. Bu durumda yalnızca {"type":"chat","reply":"cevap"} JSON'u döndür.
+Kullanıcı açıkça bir web sitesi oluşturmanı, mevcut siteyi değiştirmeyi veya kod üretmeni isterse doğrudan sonucu üret; nasıl yapılacağını anlatma. Bu durumda yalnızca {"type":"site","html":"tam bağımsız HTML belgesi"} JSON'u döndür.
+Site üretirken isteği başlık olarak kopyalama. Konuya uygun gerçek başlıklar, modern responsive tasarım ve işe yarayan etkileşimler üret. İstenen butonlar, formlar, arama, menüler, sepet vb. gerçekten JavaScript ile çalışsın. CSS <style>, JavaScript <script> içinde olsun. Arka plan/renk değişikliği istenirse uygula. Gereksiz açıklama, yönerge veya kod dışı metin ekleme. HTML çıktısı dışa aktarılabilir ve tamamlanmış olsun. JSON dışında hiçbir şey döndürme.`
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, aiConfigured: Boolean(process.env.GEMINI_API_KEY) });
@@ -48,10 +48,10 @@ app.post('/api/generate', async (req, res) => {
       },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: instructions }] },
-        contents: [{ role: 'user', parts: [{ text: `Kullanıcının web sitesi fikri:\n${prompt}` }] }],
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           responseMimeType: 'application/json',
-          maxOutputTokens: 6000,
+          maxOutputTokens: 8000,
           temperature: 0.7
         }
       })
@@ -69,8 +69,11 @@ app.post('/api/generate', async (req, res) => {
       .trim() || '';
     if (!raw) throw new Error('Gemini boş yanıt döndürdü.');
     const data = JSON.parse(raw);
+    if (data.type === 'chat' && typeof data.reply === 'string') {
+      return res.json({ type: 'chat', reply: data.reply.slice(0, 12000) });
+    }
     if (typeof data.html === 'string' && data.html.trim()) {
-      return res.json({ html: data.html.slice(0, 100000) });
+      return res.json({ type: 'site', html: data.html.slice(0, 100000) });
     }
     if (!Array.isArray(data.blocks)) throw new Error('Model geçerli blok listesi döndürmedi.');
     const allowed = new Set(['hero', 'text', 'cards', 'image']);
