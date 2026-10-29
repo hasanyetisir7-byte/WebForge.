@@ -34,7 +34,7 @@
  </main>
  <aside class="right">
   <div class="section-title">YAPAY ZEKÂ ASİSTANI</div>
-  <div class="ai-box"><p>Ne tür bir site istediğini anlat. Sunucu bağlıysa gerçek AI düzenlenebilir taslak oluşturur. Ardından tasarımı veya HTML kodunu kendin değiştirebilirsin.</p><textarea id="aiPrompt" placeholder="Örn. Modern bir kahve dükkânı için sıcak renkli açılış sayfası oluştur..."></textarea><button class="btn primary" onclick="generateFromPrompt()">✦ Taslak oluştur</button></div>
+  <div id="aiReply" class="props-empty" style="display:none;white-space:pre-wrap;margin-bottom:10px"></div><div class="ai-box"><p>İstediğini sorabilir veya bir web sitesi oluşturmasını isteyebilirsin. Sunucu bağlıysa gerçek AI düzenlenebilir taslak oluşturur. Ardından tasarımı veya HTML kodunu kendin değiştirebilirsin.</p><textarea id="aiPrompt" placeholder="Örn. Modern bir kahve dükkânı için sıcak renkli açılış sayfası oluştur..."></textarea><button class="btn primary" onclick="generateFromPrompt()">✦ Taslak oluştur</button></div>
   <div class="section-title" style="margin-top:25px">ÖZELLİKLER</div>
   <div id="props"><div class="props-empty">Düzenlemek için önizlemede bir bileşene tıkla.</div></div>
   <div class="tiny" style="margin-top:20px">Demo sürümü: projeler bu tarayıcıda saklanır. Hesaplar, bulut kaydı ve gerçek AI servisi henüz bağlı değildir.</div>
@@ -110,7 +110,9 @@ async function generateFromPrompt(){
    const data=await response.json();
    if(!response.ok) throw new Error(data?.error || ('AI sunucusu yanıt vermedi ('+response.status+').'));
    if(data.type==='chat' && typeof data.reply==='string'){
-     toast(data.reply);
+     const reply=$('aiReply');
+     reply.style.display='block';
+     reply.textContent=data.reply;
      return;
    }
    if(typeof data.html==='string' && data.html.trim()){
