@@ -13,7 +13,7 @@
 <body>
 <header class="top">
  <div class="brand"><span class="logo">W</span> WebForge <span style="font-size:10px;color:#94a6c9;font-weight:500">STUDIO</span></div>
- <div class="top-actions"><span class="status" id="saveStatus">● Yerel taslak</span><button class="btn optional" onclick="saveProject()">Kaydet</button><button class="btn optional" onclick="openAi()">✦ Yapay zekâ</button><button class="btn pro-btn" onclick="openPro()">✦ Pro</button><button class="btn primary" onclick="exportSite()">Dışa aktar ↗</button></div>
+ <div class="top-actions"><span class="status" id="saveStatus">● Yerel taslak</span><button class="btn optional" id="accountButton" onclick="openAuth()">Giriş yap</button><button class="btn optional" onclick="saveProject()">Kaydet</button><button class="btn optional" onclick="openAi()">✦ Yapay zekâ</button><button class="btn pro-btn" onclick="openPro()">✦ Pro</button><button class="btn primary" onclick="exportSite()">Dışa aktar ↗</button></div>
 </header>
 <div class="workspace">
  <aside class="left">
@@ -42,8 +42,57 @@
 </div>
 <div class="modal-bg" id="proModal"><div class="modal"><h2>✦ WebForge Pro</h2><p style="font-size:24px;color:#fff;font-weight:800;margin:16px 0 4px">99 TL <span style="font-size:12px;color:#a5b3cc;font-weight:500">/ ay</span></p><p>WebForge Pro ile daha güçlü bir site oluşturma deneyimi hedefliyoruz.</p><div style="display:grid;gap:10px;margin:16px 0;color:#dce5f8;font-size:13px"><div>✓ Daha yüksek yapay zekâ kullanım limiti</div><div>✓ Pro kullanıcı rozeti</div><div>✓ Yeni özelliklere öncelikli erişim</div></div><p style="border:1px solid #6d572f;background:#302719;padding:10px;border-radius:8px;color:#f4dca7">Ödeme sistemi henüz bağlanmadı. Şimdilik abonelik satın alınamaz; ödeme altyapısı hazır olduğunda bu bölüm etkinleştirilecek.</p><div class="modal-actions"><button class="btn" onclick="closePro()">Kapat</button></div></div></div>
 <div class="modal-bg" id="aiModal"><div class="modal"><h2>✦ Yapay zekâ ile site taslağı</h2><p>Site fikrini yaz. Gerçek AI için sunucu bağlantısı gerekir. Oluşan taslağı daha sonra tasarım ve kod araçlarıyla düzenleyebilirsin.</p><textarea id="aiPromptModal" placeholder="Örn. Bir teknoloji danışmanlığı şirketi için profesyonel site..."></textarea><div class="modal-actions"><button class="btn" onclick="closeAi()">Vazgeç</button><button class="btn primary" onclick="generateFromModal()">Taslağı oluştur</button></div></div></div>
+<div class="modal-bg" id="authModal"><div class="modal"><h2 id="authTitle">WebForge hesabına giriş yap</h2><p id="authDescription">E-posta adresin ve şifrenle giriş yap veya yeni hesap oluştur.</p><label class="field"><span>E-posta</span><input id="authEmail" type="email" autocomplete="email" placeholder="ornek@mail.com"></label><label class="field"><span>Şifre</span><input id="authPassword" type="password" autocomplete="current-password" placeholder="En az 6 karakter"></label><p id="authMessage" role="status"></p><div class="modal-actions"><button class="btn" onclick="closeAuth()">Kapat</button><button class="btn" id="authModeButton" onclick="toggleAuthMode()">Hesap oluştur</button><button class="btn primary" id="authSubmitButton" onclick="submitAuth()">Giriş yap</button></div><p class="tiny">Supabase bağlantısı henüz yapılandırılmadıysa giriş çalışmaz. E-posta/şifre bilgilerin WebForge sunucusuna gönderilmez; Supabase Auth kullanılır.</p></div></div>
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// Supabase bağlantısı: bir sonraki adımda kendi Project URL ve publishable key değerlerinle doldurulacak.
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+const SUPABASE_PUBLISHABLE_KEY = "YOUR_SUPABASE_PUBLISHABLE_KEY";
+let supabaseClient = null;
+let authMode = "login";
+function initSupabase(){
+  if(!window.supabase || SUPABASE_URL.startsWith("YOUR_") || SUPABASE_PUBLISHABLE_KEY.startsWith("YOUR_")) return false;
+  try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); return true; }
+  catch(error){ console.error("Supabase başlatılamadı:", error); return false; }
+}
+function openAuth(){ $("authModal").classList.add("open"); $("authMessage").textContent=""; updateAuthMode(); }
+function closeAuth(){ $("authModal").classList.remove("open"); }
+function toggleAuthMode(){ authMode = authMode === "login" ? "signup" : "login"; updateAuthMode(); }
+function updateAuthMode(){
+  $("authTitle").textContent = authMode === "login" ? "WebForge hesabına giriş yap" : "WebForge hesabı oluştur";
+  $("authDescription").textContent = authMode === "login" ? "E-posta adresin ve şifrenle giriş yap." : "Yeni hesabın için e-posta adresini ve en az 6 karakterli bir şifre gir.";
+  $("authSubmitButton").textContent = authMode === "login" ? "Giriş yap" : "Kayıt ol";
+  $("authModeButton").textContent = authMode === "login" ? "Hesap oluştur" : "Giriş yap";
+}
+async function submitAuth(){
+  const email=$("authEmail").value.trim(), password=$("authPassword").value;
+  if(!email || !password){$("authMessage").textContent="E-posta ve şifre alanlarını doldur.";return;}
+  if(!initSupabase()){ $("authMessage").textContent="Supabase bağlantısı henüz kodda ayarlanmadı. Sonraki adımda URL ve publishable key eklenecek.";return; }
+  const btn=$("authSubmitButton"); btn.disabled=true; $("authMessage").textContent="İşlem yapılıyor…";
+  try{
+    const result = authMode === "login"
+      ? await supabaseClient.auth.signInWithPassword({email,password})
+      : await supabaseClient.auth.signUp({email,password});
+    if(result.error) throw result.error;
+    $("authMessage").textContent = authMode === "login" ? "Giriş başarılı!" : (result.data?.session ? "Hesabın oluşturuldu ve giriş yaptın." : "Kayıt isteği alındı. E-postanı doğrulaman gerekebilir.");
+    await refreshAuthUI();
+    if(authMode === "login" || result.data?.session) setTimeout(closeAuth,700);
+  }catch(error){ $("authMessage").textContent=error?.message || "İşlem başarısız oldu. Tekrar dene."; }
+  finally{btn.disabled=false;}
+}
+async function refreshAuthUI(){
+  const button=$("accountButton");
+  if(!initSupabase()){button.textContent="Giriş yap";return;}
+  try{const {data}=await supabaseClient.auth.getSession();const user=data?.session?.user;button.textContent=user ? "Hesabım · Çıkış" : "Giriş yap";button.title=user?.email || "";}
+  catch{button.textContent="Giriş yap";}
+}
+async function accountAction(){
+  if(!initSupabase()){openAuth();return;}
+  const {data}=await supabaseClient.auth.getSession();
+  if(data?.session){const {error}=await supabaseClient.auth.signOut();if(error){toast("Çıkış yapılamadı.");return;}await refreshAuthUI();toast("Çıkış yapıldı.");}
+  else openAuth();
+}
 const initialBlocks=[
  {id:'b1',kind:'hero',eyebrow:'YARATICILIĞINI KEŞFET',title:'Fikrini dijitalde büyüt.',text:'İşini ve fikirlerini öne çıkaran modern, sade ve etkileyici bir web deneyimi oluştur.',button:'Projeni keşfet'},
  {id:'b2',kind:'cards',title:'Neden bizi seçmelisin?',cards:[['✧','Özgün Tasarım','Markanı yansıtan güçlü ve yalın bir görünüm.'],['ϟ','Hızlı Deneyim','Ziyaretçilerin için akıcı ve anlaşılır içerik.'],['▯','Her Ekrana Uygun','Telefon ve bilgisayarlarda uyumlu düzen.']]},
@@ -162,5 +211,8 @@ document.querySelectorAll('.tool[draggable=true]').forEach(t=>{t.addEventListene
 $('designView').addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('component'))e.preventDefault()});
 $('designView').addEventListener('drop',e=>{if(e.dataTransfer.getData('component')){e.preventDefault();addBlock(e.dataTransfer.getData('component'))}});
 render();
+$("accountButton").onclick = accountAction;
+refreshAuthUI();
+if (window.supabase) { try { const cfgOk = !SUPABASE_URL.startsWith("YOUR_") && !SUPABASE_PUBLISHABLE_KEY.startsWith("YOUR_"); if(cfgOk) window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY).auth.onAuthStateChange(()=>refreshAuthUI()); } catch {} }
 </script>
 </body></html>
