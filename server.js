@@ -60,8 +60,15 @@ Her yanıtta hero ile başla; sonra isteğe uygun kartlar ve metin bölümleri �
     if (!blocks.length) throw new Error('Düzenlenebilir blok bulunamadı.');
     return res.json({ blocks });
   } catch (error) {
-    console.error('WebForge generation error:', error?.message || error);
-    return res.status(502).json({ error: 'AI taslağı oluşturulamadı. API anahtarını ve model erişimini kontrol et.' });
+    console.error('WebForge generation error:', error?.status || '', error?.code || '', error?.message || error);
+    const status = Number(error?.status || 0);
+    let message = 'AI isteği başarısız oldu. Render Logs bölümündeki hatayı kontrol et.';
+    if (status === 401) message = 'OpenAI API anahtarı geçersiz. Render Environment bölümündeki OPENAI_API_KEY değerini kontrol et.';
+    else if (status === 429) message = 'OpenAI API kullanım limiti veya bakiye sorunu var. API hesabındaki Billing ve Limits ayarlarını kontrol et.';
+    else if (status === 403) message = 'OpenAI API erişimi reddedildi. Proje izinlerini ve model erişimini kontrol et.';
+    else if (status === 404) message = 'Seçilen OpenAI modeli bulunamadı veya erişilemiyor. OPENAI_MODEL değerini kontrol et.';
+    else if (error instanceof SyntaxError) message = 'AI yanıtı okunamadı. Tekrar dene.';
+    return res.status(502).json({ error: message });
   }
 });
 
