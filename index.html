@@ -109,6 +109,10 @@ async function generateFromPrompt(){
    const response=await fetch((location.hostname.endsWith('github.io') ? 'https://webforge-ai-hasanyetisir7.onrender.com' : '')+'/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
    const data=await response.json();
    if(!response.ok) throw new Error(data?.error || ('AI sunucusu yanıt vermedi ('+response.status+').'));
+   if(data.type==='chat' && typeof data.reply==='string'){
+     toast(data.reply);
+     return;
+   }
    if(typeof data.html==='string' && data.html.trim()){
      snapshot();
      customHTML=data.html;
