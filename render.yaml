@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: webforge-ai
+    name: webforge-ai-hasanyetisir7
     runtime: node
     plan: free
     buildCommand: npm install
