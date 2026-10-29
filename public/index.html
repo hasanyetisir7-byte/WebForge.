@@ -103,7 +103,7 @@ async function generateFromPrompt(){
  const original=btn?.textContent;
  if(btn){btn.disabled=true;btn.textContent='✦ AI taslağı hazırlıyor…'}
  try{
-   const response=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+   const response=await fetch((location.hostname.endsWith('github.io') ? 'https://webforge-ai-hasanyetisir7.onrender.com' : '')+'/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
    if(!response.ok) throw new Error('AI sunucusu yanıt vermedi ('+response.status+').');
    const data=await response.json();
    if(!Array.isArray(data.blocks)||!data.blocks.length) throw new Error('AI yanıtında geçerli bileşenler bulunamadı.');
