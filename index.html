@@ -149,7 +149,7 @@ function renderProps(){const b=blocks.find(x=>x.id===selectedId);const p=$('prop
  else if(b.kind==='cards')fields=`<label class="field"><span>Bölüm başlığı</span><textarea data-field="title">${esc(b.title)}</textarea></label><p class="tiny">Kart içeriklerini bu sürümde HTML kod görünümünden düzenleyebilirsin.</p>`;
  else fields=`<label class="field"><span>Görsel alanı etiketi</span><input data-field="label" value="${esc(b.label)}"></label>`;
  p.innerHTML=`<div style="font-size:12px;font-weight:800;margin:5px 0 14px">${({hero:'Hero bölümü',text:'Metin bölümü',cards:'Özellik kartları',image:'Görsel alanı'})[b.kind]}</div>${fields}<div class="prop-actions"><button class="btn small" id="moveUp">↑ Yukarı</button><button class="btn small" id="moveDown">↓ Aşağı</button><button class="btn small" id="deleteBlock" style="color:#ff9eae">Sil</button></div>`;
- p.querySelectorAll('[data-field]').forEach(inp=>inp.addEventListener('input',()=>{snapshotOnceForField();b[inp.dataset.field]=inp.value;renderBlocksOnly()}));
+ p.querySelectorAll('[data-field]').forEach(inp=>inp.addEventListener('input',()=>{const start=inp.selectionStart,end=inp.selectionEnd;snapshotOnceForField();b[inp.dataset.field]=inp.value;renderBlocksOnly();if(document.activeElement!==inp){inp.focus();try{inp.setSelectionRange(start,end)}catch(_){}}}));
  $('moveUp').onclick=()=>moveBlock(-1);$('moveDown').onclick=()=>moveBlock(1);$('deleteBlock').onclick=()=>{snapshot();blocks=blocks.filter(x=>x.id!==selectedId);selectedId=blocks[0]?.id||null;render()};
 }
 let fieldSnapshotTimer=null;function snapshotOnceForField(){if(!fieldSnapshotTimer){snapshot();fieldSnapshotTimer=setTimeout(()=>fieldSnapshotTimer=null,800)}}
