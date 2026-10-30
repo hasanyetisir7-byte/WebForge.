@@ -135,13 +135,13 @@ function addBlock(kind,index=blocks.length){snapshot();const id='b'+Date.now()+M
  if(kind==='cards')item={id,kind,title:'Öne çıkan özellikler',cards:[['✧','Özellik bir','Kısa açıklamanızı buraya yazın.'],['ϟ','Özellik iki','Kısa açıklamanızı buraya yazın.'],['▯','Özellik üç','Kısa açıklamanızı buraya yazın.']]};
  if(kind==='image')item={id,kind,label:'Görsel alanı — kendi görselini burada kullan'};
  blocks.splice(index,0,item);selectedId=id;render();showMode('design');wfToast('Bileşen eklendi.')}
-function render(){const root=$('blocks');root.innerHTML='';blocks.forEach((b,i)=>{const el=document.createElement('section');el.className='block'+(b.id===selectedId?' selected':'');el.dataset.id=b.id;el.draggable=true;
+function render(updateProps=true){const root=$('blocks');root.innerHTML='';blocks.forEach((b,i)=>{const el=document.createElement('section');el.className='block'+(b.id===selectedId?' selected':'');el.dataset.id=b.id;el.draggable=true;
  if(b.kind==='hero')el.innerHTML=`<div class="hero-block"><small>${esc(b.eyebrow)}</small><h1>${esc(b.title)}</h1><p>${esc(b.text)}</p><span class="action">${esc(b.button)} →</span></div>`;
  else if(b.kind==='text')el.innerHTML=`<div class="text-block"><h2>${esc(b.title)}</h2><p>${esc(b.text)}</p></div>`;
  else if(b.kind==='cards')el.innerHTML=`<div class="text-block" style="padding-bottom:0"><h2>${esc(b.title)}</h2></div><div class="cards-block">${b.cards.map(c=>`<article class="card"><span class="symbol">${esc(c[0])}</span><h3>${esc(c[1])}</h3><p>${esc(c[2])}</p></article>`).join('')}</div>`;
  else if(b.kind==='image')el.innerHTML=`<div class="image-placeholder">▧ &nbsp; ${esc(b.label)}</div>`;
  el.addEventListener('click',e=>{e.stopPropagation();selectBlock(e,b.id)});el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',b.id);e.dataTransfer.effectAllowed='move'});el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drop-target')});el.addEventListener('dragleave',()=>el.classList.remove('drop-target'));el.addEventListener('drop',e=>{e.preventDefault();const from=e.dataTransfer.getData('text/plain');if(from&&from!==b.id){snapshot();const old=blocks.findIndex(x=>x.id===from),to=blocks.findIndex(x=>x.id===b.id);const [moved]=blocks.splice(old,1);blocks.splice(to,0,moved);render()}else if(e.dataTransfer.getData('component'))addBlock(e.dataTransfer.getData('component'),i)});root.appendChild(el);
- });refreshCode();renderProps();$('saveStatus').textContent='● Taslak güncel'}
+ });refreshCode();if(updateProps)renderProps();$('saveStatus').textContent='● Taslak güncel'}
 function selectBlock(e,id){selectedId=id;document.querySelectorAll('.block').forEach(x=>x.classList.toggle('selected',x.dataset.id===id));renderProps()}
 function renderProps(){const b=blocks.find(x=>x.id===selectedId);const p=$('props');if(!b){p.innerHTML='<div class="props-empty">Bileşen seçilmedi.</div>';return}
  let fields='';if(b.kind==='hero')fields=`<label class="field"><span>Küçük üst başlık</span><input data-field="eyebrow" value="${esc(b.eyebrow)}"></label><label class="field"><span>Ana başlık</span><textarea data-field="title">${esc(b.title)}</textarea></label><label class="field"><span>Açıklama</span><textarea data-field="text">${esc(b.text)}</textarea></label><label class="field"><span>Düğme metni</span><input data-field="button" value="${esc(b.button)}"></label>`;
@@ -153,7 +153,7 @@ function renderProps(){const b=blocks.find(x=>x.id===selectedId);const p=$('prop
  $('moveUp').onclick=()=>moveBlock(-1);$('moveDown').onclick=()=>moveBlock(1);$('deleteBlock').onclick=()=>{snapshot();blocks=blocks.filter(x=>x.id!==selectedId);selectedId=blocks[0]?.id||null;render()};
 }
 let fieldSnapshotTimer=null;function snapshotOnceForField(){if(!fieldSnapshotTimer){snapshot();fieldSnapshotTimer=setTimeout(()=>fieldSnapshotTimer=null,800)}}
-function renderBlocksOnly(){const oldMode=mode;render();if(oldMode==='code')showMode('code')}
+function renderBlocksOnly(){const oldMode=mode;render(false);if(oldMode==='code')showMode('code')}
 function moveBlock(delta){const i=blocks.findIndex(b=>b.id===selectedId),j=i+delta;if(i<0||j<0||j>=blocks.length)return;snapshot();[blocks[i],blocks[j]]=[blocks[j],blocks[i]];render()}
 function showMode(next){mode=next;$('designView').style.display=next==='design'?'flex':'none';$('codeView').style.display=next==='code'?'flex':'none';$('designTab').classList.toggle('active',next==='design');$('codeTab').classList.toggle('active',next==='code');if(next==='code')refreshCode()}
 function refreshCode(){const page=$('page');$('codeEditor').value=customHTML||page.innerHTML}
