@@ -77,6 +77,7 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_bTgBQL-6myZhvsnbX9u5Ww_UYm3Phjh
 let supabaseClient = null;
 let authMode = "login";
 function initSupabase(){
+  if(supabaseClient) return true;
   if(!window.supabase || SUPABASE_URL.startsWith("YOUR_") || SUPABASE_PUBLISHABLE_KEY.startsWith("YOUR_")) return false;
   try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY); return true; }
   catch(error){ console.error("Supabase başlatılamadı:", error); return false; }
@@ -270,6 +271,13 @@ $('designView').addEventListener('drop',e=>{if(e.dataTransfer.getData('component
 render();
 $("accountButton").onclick = accountAction;
 refreshAuthUI();
-if (window.supabase) { try { const cfgOk = !SUPABASE_URL.startsWith("YOUR_") && !SUPABASE_PUBLISHABLE_KEY.startsWith("YOUR_"); if(cfgOk) window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY).auth.onAuthStateChange(()=>refreshAuthUI()); } catch {} }
+if (initSupabase()) {
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    const button = $("accountButton");
+    const user = session?.user;
+    button.textContent = user ? "Hesabım · Çıkış" : "Giriş yap";
+    button.title = user?.email || "";
+  });
+}
 </script>
 </body></html>
