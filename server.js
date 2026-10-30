@@ -30,34 +30,76 @@ Site üretirken isteği başlık olarak kopyalama. Konuya uygun gerçek başlık
 const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || '';
 const testProEmail = String(process.env.WEBFORGE_TEST_PRO_EMAIL || '').trim().toLowerCase();
-
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 async function getVerifiedUser(req) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
   if (!token || !supabaseUrl || !supabasePublishableKey) return null;
   try {
-    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${token}` }
-    });
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${token}` } });
     if (!response.ok) return null;
     const user = await response.json();
     return user && typeof user.id === 'string' && typeof user.email === 'string' ? user : null;
   } catch { return null; }
 }
-function isTestProUser(user) {
+function isProAdmin(user) {
   return Boolean(user?.email && testProEmail && user.email.toLowerCase() === testProEmail);
+}
+async function proDb(path, options = {}) {
+  if (!supabaseUrl || !supabaseServiceRoleKey) throw new Error('Render ortamında SUPABASE_SERVICE_ROLE_KEY ayarlanmalı.');
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    ...options,
+    headers: { apikey: supabaseServiceRoleKey, Authorization: `Bearer ${supabaseServiceRoleKey}`, 'Content-Type': 'application/json', ...(options.headers || {}) }
+  });
+  const body = await response.text();
+  if (!response.ok) throw new Error(body || 'Supabase veritabanı işlemi başarısız.');
+  return body ? JSON.parse(body) : [];
+}
+async function hasActiveDemoPro(user) {
+  if (!user?.id) return false;
+  const rows = await proDb(`webforge_demo_pro?select=user_id&user_id=eq.${encodeURIComponent(user.id)}&enabled=eq.true&limit=1`);
+  return rows.length > 0;
 }
 app.get('/api/pro/status', async (req, res) => {
   const user = await getVerifiedUser(req);
   if (!user) return res.status(401).json({ error: 'Pro durumunu görmek için giriş yapmalısın.', isPro: false });
-  return res.json({ isPro: isTestProUser(user), testPro: isTestProUser(user) });
+  try {
+    const isPro = await hasActiveDemoPro(user);
+    return res.json({ isPro, testPro: isPro, isAdmin: isProAdmin(user) });
+  } catch (error) { return res.status(503).json({ error: error.message, isPro: false }); }
 });
-app.post('/api/pro/test-enable', async (req, res) => {
+app.post('/api/pro/purchase', async (req, res) => {
   const user = await getVerifiedUser(req);
-  if (!user) return res.status(401).json({ error: 'Önce doğrulanmış WebForge hesabınla giriş yap.' });
-  if (!testProEmail) return res.status(503).json({ error: 'Test Pro henüz sunucuda yapılandırılmadı.' });
-  if (!isTestProUser(user)) return res.status(403).json({ error: 'Test Pro yalnızca izin verilen test hesabı için kullanılabilir.' });
-  return res.json({ ok: true, isPro: true, testPro: true, message: 'Test Pro sunucu tarafından doğrulandı. Gerçek ödeme alınmadı.' });
+  if (!user) return res.status(401).json({ error: 'Önce WebForge hesabına giriş yap.' });
+  try {
+    await proDb('webforge_demo_pro?on_conflict=user_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ user_id: user.id, email: user.email, enabled: true, updated_at: new Date().toISOString() })
+    });
+    return res.json({ ok: true, isPro: true, demo: true, message: 'Demo Pro etkinleştirildi; gerçek ödeme alınmadı.' });
+  } catch (error) { return res.status(503).json({ error: error.message }); }
+});
+app.get('/api/pro/admin/users', async (req, res) => {
+  const user = await getVerifiedUser(req);
+  if (!user || !isProAdmin(user)) return res.status(403).json({ error: 'Bu işlem yalnızca yönetici hesabına açık.' });
+  try {
+    const users = await proDb('webforge_demo_pro?select=user_id,email&enabled=eq.true&order=updated_at.desc');
+    return res.json({ users });
+  } catch (error) { return res.status(503).json({ error: error.message }); }
+});
+app.post('/api/pro/admin/revoke', async (req, res) => {
+  const user = await getVerifiedUser(req);
+  if (!user || !isProAdmin(user)) return res.status(403).json({ error: 'Bu işlem yalnızca yönetici hesabına açık.' });
+  const userId = typeof req.body?.user_id === 'string' ? req.body.user_id : '';
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return res.status(400).json({ error: 'Geçerli kullanıcı kimliği gerekli.' });
+  try {
+    await proDb(`webforge_demo_pro?user_id=eq.${encodeURIComponent(userId)}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ enabled: false, updated_at: new Date().toISOString() })
+    });
+    return res.json({ ok: true });
+  } catch (error) { return res.status(503).json({ error: error.message }); }
 });
 
 const dailyUsage = new Map();
@@ -79,7 +121,7 @@ app.post('/api/generate', async (req, res) => {
     usageDay = today;
   }
   const verifiedUser = await getVerifiedUser(req);
-  const isPro = isTestProUser(verifiedUser);
+  const isPro = await hasActiveDemoPro(verifiedUser).catch(() => false);
   const clientKey = String(req.ip || 'unknown').slice(0, 100);
   const used = dailyUsage.get(clientKey) || 0;
   const limit = isPro ? 100 : DAILY_LIMIT;
