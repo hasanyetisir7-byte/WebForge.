@@ -10,3 +10,11 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: gemini-3.1-flash-lite
+      - key: SUPABASE_URL
+        value: https://ucuxwvoheatloshbplam.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_bTgBQL-6myZhvsnbX9u5Ww_UYm3Phjh
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: WEBFORGE_TEST_PRO_EMAIL
+        sync: false
