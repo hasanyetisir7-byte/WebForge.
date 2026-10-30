@@ -23,3 +23,11 @@ API anahtarını GitHub'a, site koduna veya herkese açık bir yere koyma.
 5. Render servisini yeniden deploy et. Kullanıcı girişi ve Demo Pro durumu aynı Supabase projesi üzerinden doğrulanır.
 
 Not: `SUPABASE_URL` ve `SUPABASE_PUBLISHABLE_KEY` arayüzdeki herkese açık Supabase ayarlarıyla eşleşmelidir. Servis rolü anahtarı gizlidir.
+
+## Demo Premium planı
+Premium, mevcut Demo Pro tablosundaki `plan` alanıyla saklanır. Var olan üyelerin planı, yeni alanın varsayılanı sayesinde Pro olarak kalır.
+1. Supabase SQL Editor'de güncel `supabase-demo-pro.sql` dosyasını tekrar çalıştır. Bu işlem mevcut kullanıcı kayıtlarını silmez; `plan` alanını ekler.
+2. Render servisini yeniden deploy et.
+3. WebForge Paketler penceresinde Premium → Hemen Al → Öde (Demo) yolunu kullan.
+4. Premium planı günlük 300 AI isteği, Pro günlük 100, Ücretsiz günlük 20 istek sınırı uygular. Bu sınırlar demo uygulamasında sunucu belleğinde tutulur ve sunucu yeniden başladığında sıfırlanabilir.
+5. Gerçek ödeme alınmaz. Gerçek abonelik/ödeme için ayrıca ödeme sağlayıcısı ve webhook doğrulaması gerekir.
