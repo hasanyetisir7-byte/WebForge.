@@ -186,7 +186,8 @@ async function generateFromPrompt(){
  if(btn){btn.disabled=true;btn.textContent='✦ AI taslağı hazırlıyor…'}
  try{
    const accessToken=await getAccessToken();
-    const headers={'Content-Type':'application/json'};if(accessToken)headers.Authorization='Bearer '+accessToken;\n    const response=await fetch((location.hostname.endsWith('github.io') ? 'https://webforge-ai-hasanyetisir7.onrender.com' : '')+'/api/generate',{method:'POST',headers,body:JSON.stringify({prompt,currentHtml:typeof customHTML==='string'?customHTML:''})});
+    const headers={'Content-Type':'application/json'};if(accessToken)headers.Authorization='Bearer '+accessToken;
+    const response=await fetch((location.hostname.endsWith('github.io') ? 'https://webforge-ai-hasanyetisir7.onrender.com' : '')+'/api/generate',{method:'POST',headers,body:JSON.stringify({prompt,currentHtml:typeof customHTML==='string'?customHTML:''})});
    const data=await response.json();
    if(!response.ok) throw new Error(data?.error || ('AI sunucusu yanıt vermedi ('+response.status+').'));
    if(data.type==='chat' && typeof data.reply==='string'){
