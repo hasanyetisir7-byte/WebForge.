@@ -115,7 +115,7 @@ async function refreshAuthUI(){
 async function accountAction(){
   if(!initSupabase()){openAuth();return;}
   const {data}=await supabaseClient.auth.getSession();
-  if(data?.session){const {error}=await supabaseClient.auth.signOut();if(error){toast("Çıkış yapılamadı.");return;}await refreshAuthUI();toast("Çıkış yapıldı.");}
+  if(data?.session){const {error}=await supabaseClient.auth.signOut();if(error){wfToast("Çıkış yapılamadı.");return;}await refreshAuthUI();wfToast("Çıkış yapıldı.");}
   else openAuth();
 }
 const initialBlocks=[
@@ -125,16 +125,16 @@ const initialBlocks=[
 ];
 let blocks=structuredClone(initialBlocks),selectedId='b1',history=[],mode='design',customHTML=null;
 const $=id=>document.getElementById(id);
-function toast(message){const el=$('toast');if(!el)return;el.textContent=String(message??'');el.classList.add('show');clearTimeout(window.__webforgeToastTimer);window.__webforgeToastTimer=setTimeout(()=>el.classList.remove('show'),2800);}
+function wfToast(message){const el=$('toast');if(!el)return;el.textContent=String(message??'');el.classList.add('show');clearTimeout(window.__webforgeToastTimer);window.__webforgeToastTimer=setTimeout(()=>el.classList.remove('show'),2800);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function snapshot(){history.push(JSON.stringify(blocks));if(history.length>30)history.shift()}
-function undo(){if(!history.length){toast('Geri alınacak değişiklik yok.');return}blocks=JSON.parse(history.pop());render();toast('Son değişiklik geri alındı.')}
+function undo(){if(!history.length){wfToast('Geri alınacak değişiklik yok.');return}blocks=JSON.parse(history.pop());render();wfToast('Son değişiklik geri alındı.')}
 function addBlock(kind,index=blocks.length){snapshot();const id='b'+Date.now()+Math.random().toString(16).slice(2,5);let item;
  if(kind==='hero')item={id,kind,eyebrow:'BİZİ TANIYIN',title:'Fikrinizi bir adım ileri taşıyın.',text:'Ziyaretçilerinize ne sunduğunuzu açık ve etkileyici bir şekilde anlatın.',button:'Daha fazla bilgi'};
  if(kind==='text')item={id,kind,title:'Hakkımızda',text:'Hikâyenizi, yaklaşımınızı ve müşterilerinize nasıl yardımcı olduğunuzu burada anlatın.'};
  if(kind==='cards')item={id,kind,title:'Öne çıkan özellikler',cards:[['✧','Özellik bir','Kısa açıklamanızı buraya yazın.'],['ϟ','Özellik iki','Kısa açıklamanızı buraya yazın.'],['▯','Özellik üç','Kısa açıklamanızı buraya yazın.']]};
  if(kind==='image')item={id,kind,label:'Görsel alanı — kendi görselini burada kullan'};
- blocks.splice(index,0,item);selectedId=id;render();showMode('design');toast('Bileşen eklendi.')}
+ blocks.splice(index,0,item);selectedId=id;render();showMode('design');wfToast('Bileşen eklendi.')}
 function render(){const root=$('blocks');root.innerHTML='';blocks.forEach((b,i)=>{const el=document.createElement('section');el.className='block'+(b.id===selectedId?' selected':'');el.dataset.id=b.id;el.draggable=true;
  if(b.kind==='hero')el.innerHTML=`<div class="hero-block"><small>${esc(b.eyebrow)}</small><h1>${esc(b.title)}</h1><p>${esc(b.text)}</p><span class="action">${esc(b.button)} →</span></div>`;
  else if(b.kind==='text')el.innerHTML=`<div class="text-block"><h2>${esc(b.title)}</h2><p>${esc(b.text)}</p></div>`;
@@ -157,10 +157,10 @@ function renderBlocksOnly(){const oldMode=mode;render();if(oldMode==='code')show
 function moveBlock(delta){const i=blocks.findIndex(b=>b.id===selectedId),j=i+delta;if(i<0||j<0||j>=blocks.length)return;snapshot();[blocks[i],blocks[j]]=[blocks[j],blocks[i]];render()}
 function showMode(next){mode=next;$('designView').style.display=next==='design'?'flex':'none';$('codeView').style.display=next==='code'?'flex':'none';$('designTab').classList.toggle('active',next==='design');$('codeTab').classList.toggle('active',next==='code');if(next==='code')refreshCode()}
 function refreshCode(){const page=$('page');$('codeEditor').value=customHTML||page.innerHTML}
-function applyCode(){customHTML=$('codeEditor').value;try{$('page').innerHTML=customHTML;showMode('design');toast('Kod önizlemeye uygulandı. Güvenlik için bu demo kodu izole etmez.')}catch(e){toast('Kod uygulanamadı: '+e.message)}}
-function saveProject(){localStorage.setItem('webforge_project_v1',JSON.stringify({blocks,brand:document.querySelector('.page-header strong')?.textContent||'Nova Studio'}));toast('Proje bu tarayıcıya kaydedildi.');$('saveStatus').textContent='● Kaydedildi'}
-function loadProject(){const raw=localStorage.getItem('webforge_project_v1');if(!raw){toast('Bu tarayıcıda kayıtlı proje bulunamadı.');return}try{const data=JSON.parse(raw);blocks=data.blocks||structuredClone(initialBlocks);selectedId=blocks[0]?.id||null;render();toast('Proje yüklendi.')}catch(e){toast('Kayıt okunamadı.')}}
-function newProject(){if(!confirm('Mevcut taslağı yeni proje ile değiştirmek istiyor musun?'))return;snapshot();blocks=[];selectedId=null;customHTML=null;render();toast('Boş proje hazır. Sol menüden bileşen ekle.')}
+function applyCode(){customHTML=$('codeEditor').value;try{$('page').innerHTML=customHTML;showMode('design');wfToast('Kod önizlemeye uygulandı. Güvenlik için bu demo kodu izole etmez.')}catch(e){wfToast('Kod uygulanamadı: '+e.message)}}
+function saveProject(){localStorage.setItem('webforge_project_v1',JSON.stringify({blocks,brand:document.querySelector('.page-header strong')?.textContent||'Nova Studio'}));wfToast('Proje bu tarayıcıya kaydedildi.');$('saveStatus').textContent='● Kaydedildi'}
+function loadProject(){const raw=localStorage.getItem('webforge_project_v1');if(!raw){wfToast('Bu tarayıcıda kayıtlı proje bulunamadı.');return}try{const data=JSON.parse(raw);blocks=data.blocks||structuredClone(initialBlocks);selectedId=blocks[0]?.id||null;render();wfToast('Proje yüklendi.')}catch(e){wfToast('Kayıt okunamadı.')}}
+function newProject(){if(!confirm('Mevcut taslağı yeni proje ile değiştirmek istiyor musun?'))return;snapshot();blocks=[];selectedId=null;customHTML=null;render();wfToast('Boş proje hazır. Sol menüden bileşen ekle.')}
 function proApiBase(){return location.hostname.endsWith('github.io')?'https://webforge-ai-hasanyetisir7.onrender.com':''}
 async function proApi(path,method='GET',body){
  const token=await getAccessToken();if(!token)throw new Error('Önce WebForge hesabına giriş yap.');
@@ -172,7 +172,7 @@ let proInCart=false;
 function openPro(){$('proModal').classList.add('open');$('demoCheckout').style.display='none';checkTestPro()}
 function closePro(){$('proModal').classList.remove('open')}
 async function getAccessToken(){if(!initSupabase())return null;const {data}=await supabaseClient.auth.getSession();return data?.session?.access_token||null}
-function addProToCart(){proInCart=true;$('demoCart').textContent='✓ WebForge Pro sepete eklendi — 99 TL / ay (Demo).';toast('Demo Pro sepete eklendi.')}
+function addProToCart(){proInCart=true;$('demoCart').textContent='✓ WebForge Pro sepete eklendi — 99 TL / ay (Demo).';wfToast('Demo Pro sepete eklendi.')}
 function showDemoCheckout(){if(!proInCart)addProToCart();$('demoCheckout').style.display='block'}
 async function completeDemoPurchase(){
  const message=$('testProMessage');message.textContent='Demo üyelik etkinleştiriliyor…';
@@ -187,7 +187,7 @@ async function checkTestPro(){
 async function loadDemoProUsers(){
  const box=$('demoProUsers');box.textContent='Kullanıcılar yükleniyor…';
  try{const data=await proApi('/api/pro/admin/users');box.innerHTML='';if(!data.users.length){box.textContent='Aktif Demo Pro kullanıcısı yok.';return}
- data.users.forEach(user=>{const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#17233a;border-radius:8px';const label=document.createElement('span');label.textContent=user.email||user.user_id;const button=document.createElement('button');button.className='btn small';button.textContent='Pro’yu kapat';button.onclick=async()=>{if(!confirm('Bu kullanıcının Demo Pro üyeliğini kapatmak istiyor musun?'))return;try{await proApi('/api/pro/admin/revoke','POST',{user_id:user.user_id});row.remove();toast('Kullanıcının Demo Pro üyeliği kapatıldı.')}catch(e){toast(e.message)}};row.append(label,button);box.append(row)})
+ data.users.forEach(user=>{const row=document.createElement('div');row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0;padding:8px;background:#17233a;border-radius:8px';const label=document.createElement('span');label.textContent=user.email||user.user_id;const button=document.createElement('button');button.className='btn small';button.textContent='Pro’yu kapat';button.onclick=async()=>{if(!confirm('Bu kullanıcının Demo Pro üyeliğini kapatmak istiyor musun?'))return;try{await proApi('/api/pro/admin/revoke','POST',{user_id:user.user_id});row.remove();wfToast('Kullanıcının Demo Pro üyeliği kapatıldı.')}catch(e){wfToast(e.message)}};row.append(label,button);box.append(row)})
  }catch(error){box.textContent=error.message||'Yönetim listesi alınamadı.'}
 }
 function openAi(){$('aiModal').classList.add('open');$('aiPromptModal').value=$('aiPrompt').value}
@@ -203,7 +203,7 @@ function setWorkspaceMode(next){
 }
 async function generateFromPrompt(){
  const prompt=$('aiPrompt').value.trim();
- if(!prompt){toast('Önce nasıl bir site istediğini yaz.');return}
+ if(!prompt){wfToast('Önce nasıl bir site istediğini yaz.');return}
  // İstek gönderildiğinde giriş alanlarını temizle; istek değişkende korunur.
  $('aiPrompt').value='';
  $('aiPromptModal').value='';
@@ -232,7 +232,7 @@ async function generateFromPrompt(){
      $('page').style.color='#17233a';
      showMode('design');
      closeAi();
-     toast('AI kodu oluşturdu! Kod sekmesinden inceleyip dışa aktarabilirsin.');
+     wfToast('AI kodu oluşturdu! Kod sekmesinden inceleyip dışa aktarabilirsin.');
      return;
    }
    if(!Array.isArray(data.blocks)||!data.blocks.length) throw new Error('AI yanıtında geçerli bileşenler bulunamadı.');
@@ -248,10 +248,10 @@ async function generateFromPrompt(){
    snapshot();blocks=cleaned;selectedId=blocks[0]?.id||null;customHTML=null;render();
    if(data.style?.background && /^#[0-9a-fA-F]{6}$/.test(data.style.background)) $('page').style.background=data.style.background;
    if(data.style?.color && /^#[0-9a-fA-F]{6}$/.test(data.style.color)) $('page').style.color=data.style.color;
-   showMode('design');closeAi();setWorkspaceMode('mix');toast('Gerçek AI taslağı hazır! Şimdi kendin düzenleyebilirsin.');
+   showMode('design');closeAi();setWorkspaceMode('mix');wfToast('Gerçek AI taslağı hazır! Şimdi kendin düzenleyebilirsin.');
  }catch(err){
    console.warn('WebForge AI:',err);
-   toast(err?.message || 'AI taslağı oluşturulamadı. Lütfen tekrar dene.');
+   wfToast(err?.message || 'AI taslağı oluşturulamadı. Lütfen tekrar dene.');
  }finally{if(btn){btn.disabled=false;btn.textContent=original||'✦ Taslak oluştur'}}
 }
 
@@ -260,8 +260,8 @@ function generateLocalDraft(prompt){snapshot();const low=prompt.toLocaleLowerCas
  else if(low.includes('teknoloji')||low.includes('yazılım')||low.includes('yazilim')||low.includes('ai')||low.includes('yapay zekâ')||low.includes('yapay zeka')){brand='Nexa Teknoloji';eyebrow='GELECEĞİ BİRLİKTE TASARLAYALIM';title='İşinizi ileri taşıyan akıllı çözümler.';text='Karmaşık süreçleri kolaylaştıran teknoloji, yazılım ve yapay zekâ çözümleriyle büyümenize yardımcı oluyoruz.';cardsTitle='Çözümlerimiz';cards=[['⌘','Akıllı otomasyon','Tekrarlanan işleri kolaylaştırın.'],['ϟ','Özel yazılım','İşinize uygun dijital ürünler geliştirin.'],['✧','AI entegrasyonu','İş akışlarınıza yeni yetenekler kazandırın.']]}
  else if(low.includes('portföy')||low.includes('portfolyo')||low.includes('tasarımcı')||low.includes('tasarimci')){brand='Studio Forma';eyebrow='SEÇİLMİŞ İŞLER · YARATICI PORTFÖY';title='Fikirleri etkileyici deneyimlere dönüştürüyorum.';text='Strateji, tasarım ve dijital üretimin kesişiminde markalar için anlamlı işler oluşturuyorum.';cardsTitle='Neler yapıyorum?';cards=[['✎','Marka kimliği','Hatırlanan, tutarlı görsel sistemler.'],['▧','Dijital tasarım','Kullanıcı odaklı web deneyimleri.'],['◈','Sanat yönetimi','Fikirden son ürüne yaratıcı yön.']]}
  else if(low.includes('spor')||low.includes('fitness')||low.includes('spor salonu')){brand='Pulse Fitness';eyebrow='GÜÇLÜ HİSSET · İLERLE';title='Hedeflerin için bugün harekete geç.';text='Sana uygun antrenman, uzman desteği ve motive eden bir toplulukla potansiyelini keşfet.';cardsTitle='Sana sunduklarımız';cards=[['ϟ','Kişisel antrenman','Hedefine uygun çalışma planı.'],['♡','Destekleyici topluluk','Birlikte gelişmek için doğru ortam.'],['◉','Esnek programlar','Gününe uyan antrenman saatleri.']]}
- blocks=[{id:'aihero'+Date.now(),kind:'hero',eyebrow,title,text,button:'Hemen keşfet'},{id:'aicards'+Date.now(),kind:'cards',title:cardsTitle,cards},{id:'aitext'+Date.now(),kind:'text',title:'Bir sonraki adımı birlikte atalım.',text:'Bize ulaşın; ihtiyaçlarınızı konuşalım ve sizin için doğru çözümü keşfedelim.'}];selectedId=blocks[0].id;customHTML=null;render();showMode('design');toast('Yerel örnek taslak oluşturuldu. Gerçek AI için sunucu bağlantısını kontrol et.')}
-function exportSite(){let html;if(customHTML)html=customHTML;else html=$('page').innerHTML;const full=(customHTML && /<!doctype|<html/i.test(customHTML)) ? customHTML : `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WebForge ile oluşturuldu</title><style>body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;color:#17233a}.page-header{display:flex;justify-content:space-between;align-items:center;padding:20px 6%;font-weight:800;border-bottom:1px solid #e7ebf3}.page-nav{display:flex;gap:16px;color:#69758d;font-size:11px}.block{position:relative}.hero-block{padding:75px 9%;background:linear-gradient(120deg,#e5eaff,#f9e5f5 60%,#d8ecff)}.hero-block small{color:#7051d8;font-size:11px;font-weight:800;letter-spacing:1px}.hero-block h1{font-size:clamp(32px,4.5vw,54px);line-height:1.04;letter-spacing:-1.7px;margin:13px 0;max-width:650px}.hero-block p{font-size:14px;line-height:1.75;color:#5c6983;max-width:560px}.action{display:inline-block;margin-top:12px;padding:12px 17px;border-radius:8px;color:white;background:linear-gradient(110deg,#8152ff,#278fff);font-weight:700;font-size:12px}.cards-block{padding:24px 6%;display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.card{padding:20px;background:#f3f6fb;border-radius:11px}.card .symbol{font-size:22px;color:#775cff}.card h3{font-size:13px;margin:10px 0 6px}.card p{font-size:11px;line-height:1.65;color:#75829a;margin:0}.text-block{padding:30px 8%;line-height:1.8}.text-block h2{font-size:27px;margin:0 0 10px}.text-block p{color:#66738a;max-width:680px}.image-placeholder{margin:24px 7%;height:190px;border-radius:12px;background:linear-gradient(120deg,#d9e7ff,#f0dcff,#c8f1ef);display:grid;place-items:center;color:#596b8d;font-weight:700}@media(max-width:650px){.cards-block{grid-template-columns:1fr}.page-nav{display:none}}</style></head><body><main class="page">${html}</main></body></html>`;const blob=new Blob([full],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='webforge-sitem.html';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('HTML dosyan indirildi. Hosting hizmetine yükleyerek yayımlayabilirsin.')}
+ blocks=[{id:'aihero'+Date.now(),kind:'hero',eyebrow,title,text,button:'Hemen keşfet'},{id:'aicards'+Date.now(),kind:'cards',title:cardsTitle,cards},{id:'aitext'+Date.now(),kind:'text',title:'Bir sonraki adımı birlikte atalım.',text:'Bize ulaşın; ihtiyaçlarınızı konuşalım ve sizin için doğru çözümü keşfedelim.'}];selectedId=blocks[0].id;customHTML=null;render();showMode('design');wfToast('Yerel örnek taslak oluşturuldu. Gerçek AI için sunucu bağlantısını kontrol et.')}
+function exportSite(){let html;if(customHTML)html=customHTML;else html=$('page').innerHTML;const full=(customHTML && /<!doctype|<html/i.test(customHTML)) ? customHTML : `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WebForge ile oluşturuldu</title><style>body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;color:#17233a}.page-header{display:flex;justify-content:space-between;align-items:center;padding:20px 6%;font-weight:800;border-bottom:1px solid #e7ebf3}.page-nav{display:flex;gap:16px;color:#69758d;font-size:11px}.block{position:relative}.hero-block{padding:75px 9%;background:linear-gradient(120deg,#e5eaff,#f9e5f5 60%,#d8ecff)}.hero-block small{color:#7051d8;font-size:11px;font-weight:800;letter-spacing:1px}.hero-block h1{font-size:clamp(32px,4.5vw,54px);line-height:1.04;letter-spacing:-1.7px;margin:13px 0;max-width:650px}.hero-block p{font-size:14px;line-height:1.75;color:#5c6983;max-width:560px}.action{display:inline-block;margin-top:12px;padding:12px 17px;border-radius:8px;color:white;background:linear-gradient(110deg,#8152ff,#278fff);font-weight:700;font-size:12px}.cards-block{padding:24px 6%;display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.card{padding:20px;background:#f3f6fb;border-radius:11px}.card .symbol{font-size:22px;color:#775cff}.card h3{font-size:13px;margin:10px 0 6px}.card p{font-size:11px;line-height:1.65;color:#75829a;margin:0}.text-block{padding:30px 8%;line-height:1.8}.text-block h2{font-size:27px;margin:0 0 10px}.text-block p{color:#66738a;max-width:680px}.image-placeholder{margin:24px 7%;height:190px;border-radius:12px;background:linear-gradient(120deg,#d9e7ff,#f0dcff,#c8f1ef);display:grid;place-items:center;color:#596b8d;font-weight:700}@media(max-width:650px){.cards-block{grid-template-columns:1fr}.page-nav{display:none}}</style></head><body><main class="page">${html}</main></body></html>`;const blob=new Blob([full],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='webforge-sitem.html';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);wfToast('HTML dosyan indirildi. Hosting hizmetine yükleyerek yayımlayabilirsin.')}
 document.querySelectorAll('.tool[draggable=true]').forEach(t=>{t.addEventListener('dragstart',e=>{e.dataTransfer.setData('component',t.dataset.kind);e.dataTransfer.effectAllowed='copy'});});
 $('designView').addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('component'))e.preventDefault()});
 $('designView').addEventListener('drop',e=>{if(e.dataTransfer.getData('component')){e.preventDefault();addBlock(e.dataTransfer.getData('component'))}});
