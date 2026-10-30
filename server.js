@@ -12,7 +12,7 @@ app.use((req, res, next) => {
   if (origin === 'https://hasanyetisir7-byte.github.io' || !origin) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
     res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
@@ -25,6 +25,40 @@ app.use(express.static(path.join(root, 'public')));
 const instructions = `Sen WebForge içindeki genel amaçlı bir yapay zekâ asistanısın. Türkçe konuş, doğal ve yardımcı ol. Kullanıcı normal bir soru soruyorsa, sohbet ediyorsa veya bir şeyin açıklamasını istiyorsa doğrudan cevap ver; web sitesi üretmeye çalışma. Bu durumda yalnızca {"type":"chat","reply":"cevap"} JSON'u döndür.
 Kullanıcı açıkça bir web sitesi oluşturmanı, mevcut siteyi değiştirmeyi veya kod üretmeni isterse doğrudan sonucu üret; nasıl yapılacağını anlatma. Bu durumda yalnızca {"type":"site","html":"tam bağımsız HTML belgesi"} JSON'u döndür. Eğer kullanıcı mesajında CURRENT WEBSITE HTML bölümü varsa ve kullanıcı bir özellik ekleme, ürün ekleme, buton ekleme, tasarım değiştirme veya başka bir site düzenlemesi istiyorsa MUTLAKA type=site döndür. chat döndürme, sadece yapacağını söyleme, 'bir saniye' gibi bir cevap verme. Yeni boş sayfa oluşturma. Verilen HTML'nin tamamını düzenleyerek geri döndür; mevcut sayfanın tasarımını, ürünlerini, sepetini ve diğer özelliklerini koru. İstek bir ekleme veya değişiklikse sadece o değişikliği mevcut siteye entegre et. Örneğin 'Patates Kahvesi ürününü menüye 100 TL ile ekle' isteğinde menüye gerçekten yeni ürün kartı ve fiyat ekle, mevcut sayfadaki ürünleri silme. Butonlara işlev eklerken JavaScript'i de yaz ve HTML içinde uygula. Örneğin mevcut mağazaya ödeme butonu istendiğinde ürünleri ve sepeti silme; ödeme butonunu ve uygun ödeme akışını aynı siteye ekle. Sohbet isteği gelse bile mevcut site bağlamı verilmişse site değişikliği değilse normal sohbet yanıtı verilebilir.
 Site üretirken isteği başlık olarak kopyalama. Konuya uygun gerçek başlıklar, modern responsive tasarım ve işe yarayan etkileşimler üret. İstenen butonlar, formlar, arama, menüler, sepet vb. gerçekten JavaScript ile çalışsın. CSS <style>, JavaScript <script> içinde olsun. Arka plan/renk değişikliği istenirse uygula. Gereksiz açıklama, yönerge veya kod dışı metin ekleme. HTML çıktısı dışa aktarılabilir ve tamamlanmış olsun. JSON dışında hiçbir şey döndürme.`
+
+
+const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || '';
+const testProEmail = String(process.env.WEBFORGE_TEST_PRO_EMAIL || '').trim().toLowerCase();
+
+async function getVerifiedUser(req) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token || !supabaseUrl || !supabasePublishableKey) return null;
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { apikey: supabasePublishableKey, Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) return null;
+    const user = await response.json();
+    return user && typeof user.id === 'string' && typeof user.email === 'string' ? user : null;
+  } catch { return null; }
+}
+function isTestProUser(user) {
+  return Boolean(user?.email && testProEmail && user.email.toLowerCase() === testProEmail);
+}
+app.get('/api/pro/status', async (req, res) => {
+  const user = await getVerifiedUser(req);
+  if (!user) return res.status(401).json({ error: 'Pro durumunu görmek için giriş yapmalısın.', isPro: false });
+  return res.json({ isPro: isTestProUser(user), testPro: isTestProUser(user) });
+});
+app.post('/api/pro/test-enable', async (req, res) => {
+  const user = await getVerifiedUser(req);
+  if (!user) return res.status(401).json({ error: 'Önce doğrulanmış WebForge hesabınla giriş yap.' });
+  if (!testProEmail) return res.status(503).json({ error: 'Test Pro henüz sunucuda yapılandırılmadı.' });
+  if (!isTestProUser(user)) return res.status(403).json({ error: 'Test Pro yalnızca izin verilen test hesabı için kullanılabilir.' });
+  return res.json({ ok: true, isPro: true, testPro: true, message: 'Test Pro sunucu tarafından doğrulandı. Gerçek ödeme alınmadı.' });
+});
 
 const dailyUsage = new Map();
 let usageDay = new Date().toISOString().slice(0, 10);
@@ -44,10 +78,13 @@ app.post('/api/generate', async (req, res) => {
     dailyUsage.clear();
     usageDay = today;
   }
+  const verifiedUser = await getVerifiedUser(req);
+  const isPro = isTestProUser(verifiedUser);
   const clientKey = String(req.ip || 'unknown').slice(0, 100);
   const used = dailyUsage.get(clientKey) || 0;
-  if (used >= DAILY_LIMIT) {
-    return res.status(429).json({ error: 'Bugünkü ücretsiz kullanım hakkın doldu (günlük 20 istek). Yarın tekrar deneyebilirsin.', limit: DAILY_LIMIT, remaining: 0 });
+  const limit = isPro ? 100 : DAILY_LIMIT;
+  if (used >= limit) {
+    return res.status(429).json({ error: isPro ? 'Bugünkü test Pro kullanım hakkın doldu.' : 'Bugünkü ücretsiz kullanım hakkın doldu (günlük 20 istek). Yarın tekrar deneyebilirsin.', limit, remaining: 0 });
   }
   dailyUsage.set(clientKey, used + 1);
 
