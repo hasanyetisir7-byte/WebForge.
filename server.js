@@ -56,29 +56,34 @@ async function proDb(path, options = {}) {
   if (!response.ok) throw new Error(body || 'Supabase veritabanı işlemi başarısız.');
   return body ? JSON.parse(body) : [];
 }
-async function hasActiveDemoPro(user) {
-  if (!user?.id) return false;
-  const rows = await proDb(`webforge_demo_pro?select=user_id&user_id=eq.${encodeURIComponent(user.id)}&enabled=eq.true&limit=1`);
-  return rows.length > 0;
+async function getActiveDemoPlan(user) {
+  if (!user?.id) return 'free';
+  const rows = await proDb(`webforge_demo_pro?select=user_id,plan&user_id=eq.${encodeURIComponent(user.id)}&enabled=eq.true&limit=1`);
+  const plan = rows[0]?.plan;
+  return plan === 'premium' || plan === 'pro' ? plan : 'free';
 }
 app.get('/api/pro/status', async (req, res) => {
   const user = await getVerifiedUser(req);
-  if (!user) return res.status(401).json({ error: 'Pro durumunu görmek için giriş yapmalısın.', isPro: false });
+  if (!user) return res.status(401).json({ error: 'Paket durumunu görmek için giriş yapmalısın.', isPro: false, isPremium: false, plan: 'free' });
   try {
-    const isPro = await hasActiveDemoPro(user);
-    return res.json({ isPro, testPro: isPro, isAdmin: isProAdmin(user) });
-  } catch (error) { return res.status(503).json({ error: error.message, isPro: false }); }
+    const plan = await getActiveDemoPlan(user);
+    const isPro = plan === 'pro' || plan === 'premium';
+    return res.json({ isPro, isPremium: plan === 'premium', plan, testPro: isPro, isAdmin: isProAdmin(user) });
+  } catch (error) { return res.status(503).json({ error: error.message, isPro: false, isPremium: false, plan: 'free' }); }
 });
 app.post('/api/pro/purchase', async (req, res) => {
   const user = await getVerifiedUser(req);
   if (!user) return res.status(401).json({ error: 'Önce WebForge hesabına giriş yap.' });
+  const plan = req.body?.plan || 'pro';
+  if (!['pro', 'premium'].includes(plan)) return res.status(400).json({ error: 'Geçersiz paket seçimi.' });
   try {
     await proDb('webforge_demo_pro?on_conflict=user_id', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ user_id: user.id, email: user.email, enabled: true, updated_at: new Date().toISOString() })
+      body: JSON.stringify({ user_id: user.id, email: user.email, plan, enabled: true, updated_at: new Date().toISOString() })
     });
-    return res.json({ ok: true, isPro: true, demo: true, message: 'Demo Pro etkinleştirildi; gerçek ödeme alınmadı.' });
+    const name = plan === 'premium' ? 'Premium' : 'Pro';
+    return res.json({ ok: true, isPro: true, isPremium: plan === 'premium', plan, demo: true, message: `Demo ${name} etkinleştirildi; gerçek ödeme alınmadı.` });
   } catch (error) { return res.status(503).json({ error: error.message }); }
 });
 app.get('/api/pro/admin/users', async (req, res) => {
@@ -122,12 +127,17 @@ app.post('/api/generate', async (req, res) => {
     usageDay = today;
   }
   const verifiedUser = await getVerifiedUser(req);
-  const isPro = await hasActiveDemoPro(verifiedUser).catch(() => false);
-  const clientKey = String(req.ip || 'unknown').slice(0, 100);
+  const plan = await getActiveDemoPlan(verifiedUser).catch(() => 'free');
+  const clientKey = verifiedUser?.id ? `user:${verifiedUser.id}` : String(req.ip || 'unknown').slice(0, 100);
   const used = dailyUsage.get(clientKey) || 0;
-  const limit = isPro ? 100 : DAILY_LIMIT;
+  const limit = plan === 'premium' ? 300 : plan === 'pro' ? 100 : DAILY_LIMIT;
   if (used >= limit) {
-    return res.status(429).json({ error: isPro ? 'Bugünkü test Pro kullanım hakkın doldu.' : 'Bugünkü ücretsiz kullanım hakkın doldu (günlük 20 istek). Yarın tekrar deneyebilirsin.', limit, remaining: 0 });
+    const limitMessage = plan === 'premium'
+      ? 'Bugünkü Premium kullanım hakkın doldu (günlük 300 istek). Yarın tekrar deneyebilirsin.'
+      : plan === 'pro'
+        ? 'Bugünkü Pro kullanım hakkın doldu (günlük 100 istek). Yarın tekrar deneyebilirsin.'
+        : 'Bugünkü ücretsiz kullanım hakkın doldu (günlük 20 istek). Yarın tekrar deneyebilirsin.';
+    return res.status(429).json({ error: limitMessage, plan, limit, remaining: 0 });
   }
   dailyUsage.set(clientKey, used + 1);
 
