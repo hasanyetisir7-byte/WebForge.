@@ -44,6 +44,31 @@
 <div class="modal-bg" id="aiModal"><div class="modal"><h2>✦ Yapay zekâ ile site taslağı</h2><p>Site fikrini yaz. Gerçek AI için sunucu bağlantısı gerekir. Oluşan taslağı daha sonra tasarım ve kod araçlarıyla düzenleyebilirsin.</p><textarea id="aiPromptModal" placeholder="Örn. Bir teknoloji danışmanlığı şirketi için profesyonel site..."></textarea><div class="modal-actions"><button class="btn" onclick="closeAi()">Vazgeç</button><button class="btn primary" onclick="generateFromModal()">Taslağı oluştur</button></div></div></div>
 <div class="modal-bg" id="authModal"><div class="modal"><h2 id="authTitle">WebForge hesabına giriş yap</h2><p id="authDescription">E-posta adresin ve şifrenle giriş yap veya yeni hesap oluştur.</p><label class="field"><span>E-posta</span><input id="authEmail" type="email" autocomplete="email" placeholder="ornek@mail.com"></label><label class="field"><span>Şifre</span><input id="authPassword" type="password" autocomplete="current-password" placeholder="En az 6 karakter"></label><p id="authMessage" role="status"></p><div class="modal-actions"><button class="btn" onclick="closeAuth()">Kapat</button><button class="btn" id="authModeButton" onclick="toggleAuthMode()">Hesap oluştur</button><button class="btn primary" id="authSubmitButton" onclick="submitAuth()">Giriş yap</button></div><p class="tiny">Supabase bağlantısı henüz yapılandırılmadıysa giriş çalışmaz. E-posta/şifre bilgilerin WebForge sunucusuna gönderilmez; Supabase Auth kullanılır.</p></div></div>
 <div class="toast" id="toast"></div>
+<script>
+/* WebForge güvenlik ağı: ana uygulama kodu hata verirse sayfayı kilitlemek yerine kurtarma ekranı gösterir. */
+(function(){
+  var handled=false;
+  function recover(message){
+    if(handled)return; handled=true;
+    try{
+      var old=document.getElementById('wf-recovery');
+      if(old)return;
+      var panel=document.createElement('div');
+      panel.id='wf-recovery';
+      panel.style.cssText='position:fixed;inset:0;z-index:999999;background:#08111f;color:#f5f7ff;display:flex;align-items:center;justify-content:center;padding:24px;font:15px system-ui';
+      var card=document.createElement('div');
+      card.style.cssText='max-width:560px;background:#142139;border:1px solid #405777;border-radius:16px;padding:24px;box-shadow:0 20px 70px #0009';
+      var title=document.createElement('h2');title.textContent='WebForge kurtarma modu';title.style.marginTop='0';
+      var p=document.createElement('p');p.textContent='Bir teknik hata algılandı. Sayfanın diğer kontrollerinin takılmasını önlemek için uygulama güvenli moda alındı. Sayfayı yenilemeyi deneyebilirsin.';
+      var detail=document.createElement('pre');detail.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;color:#b9c7e2;font-size:12px;background:#0b1424;padding:10px;border-radius:8px';detail.textContent=String(message||'Bilinmeyen JavaScript hatası').slice(0,700);
+      var reload=document.createElement('button');reload.textContent='Sayfayı yenile';reload.style.cssText='padding:11px 16px;border:0;border-radius:8px;background:#8152ff;color:white;font-weight:700;cursor:pointer';reload.onclick=function(){location.reload()};
+      card.append(title,p,detail,reload);panel.append(card);document.body.append(panel);
+    }catch(_){}
+  }
+  window.addEventListener('error',function(e){recover((e.message||'JavaScript hatası')+(e.filename?' — '+e.filename.split('/').pop():'')+(e.lineno?':'+e.lineno:''));});
+  window.addEventListener('unhandledrejection',function(e){var r=e.reason;recover(r&&r.message?r.message:String(r||'İşlem tamamlanamadı'));});
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // Supabase bağlantı bilgileri yapılandırıldı.
