@@ -125,6 +125,7 @@ const initialBlocks=[
 ];
 let blocks=structuredClone(initialBlocks),selectedId='b1',history=[],mode='design',customHTML=null;
 const $=id=>document.getElementById(id);
+function toast(message){const el=$('toast');if(!el)return;el.textContent=String(message??'');el.classList.add('show');clearTimeout(window.__webforgeToastTimer);window.__webforgeToastTimer=setTimeout(()=>el.classList.remove('show'),2800);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function snapshot(){history.push(JSON.stringify(blocks));if(history.length>30)history.shift()}
 function undo(){if(!history.length){toast('Geri alınacak değişiklik yok.');return}blocks=JSON.parse(history.pop());render();toast('Son değişiklik geri alındı.')}
