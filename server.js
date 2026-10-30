@@ -27,8 +27,9 @@ Kullanıcı açıkça bir web sitesi oluşturmanı, mevcut siteyi değiştirmeyi
 Site üretirken isteği başlık olarak kopyalama. Konuya uygun gerçek başlıklar, modern responsive tasarım ve işe yarayan etkileşimler üret. İstenen butonlar, formlar, arama, menüler, sepet vb. gerçekten JavaScript ile çalışsın. CSS <style>, JavaScript <script> içinde olsun. Arka plan/renk değişikliği istenirse uygula. Gereksiz açıklama, yönerge veya kod dışı metin ekleme. HTML çıktısı dışa aktarılabilir ve tamamlanmış olsun. JSON dışında hiçbir şey döndürme.`
 
 
-const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || '';
+// These are public Supabase project settings, matching the browser client in index.html.
+const supabaseUrl = String(process.env.SUPABASE_URL || 'https://ucuxwvoheatloshbplam.supabase.co').replace(/\/$/, '');
+const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_bTgBQL-6myZhvsnbX9u5Ww_UYm3Phjh';
 const testProEmail = String(process.env.WEBFORGE_TEST_PRO_EMAIL || '').trim().toLowerCase();
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 async function getVerifiedUser(req) {
