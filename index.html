@@ -40,7 +40,7 @@
   <div class="tiny" style="margin-top:20px">Demo sürümü: projeler bu tarayıcıda saklanır. Hesaplar, bulut kaydı ve gerçek AI servisi henüz bağlı değildir.</div>
  </aside>
 </div>
-<div class="modal-bg" id="proModal"><div class="modal"><h2>✦ WebForge Pro</h2><p style="font-size:24px;color:#fff;font-weight:800;margin:16px 0 4px">99 TL <span style="font-size:12px;color:#a5b3cc;font-weight:500">/ ay</span></p><p>WebForge Pro ile daha güçlü bir site oluşturma deneyimi hedefliyoruz.</p><div style="display:grid;gap:10px;margin:16px 0;color:#dce5f8;font-size:13px"><div>✓ Daha yüksek yapay zekâ kullanım limiti</div><div>✓ Pro kullanıcı rozeti</div><div>✓ Yeni özelliklere öncelikli erişim</div></div><p style="border:1px solid #6d572f;background:#302719;padding:10px;border-radius:8px;color:#f4dca7">Ödeme sistemi henüz bağlanmadı. Şimdilik abonelik satın alınamaz; ödeme altyapısı hazır olduğunda bu bölüm etkinleştirilecek.</p><div class="modal-actions"><button class="btn" onclick="closePro()">Kapat</button></div></div></div>
+<div class="modal-bg" id="proModal"><div class="modal"><h2>✦ WebForge Pro</h2><p style="font-size:24px;color:#fff;font-weight:800;margin:16px 0 4px">99 TL <span style="font-size:12px;color:#a5b3cc;font-weight:500">/ ay</span></p><p>WebForge Pro ile daha güçlü bir site oluşturma deneyimi hedefliyoruz.</p><div style="display:grid;gap:10px;margin:16px 0;color:#dce5f8;font-size:13px"><div>✓ Daha yüksek yapay zekâ kullanım limiti</div><div>✓ Pro kullanıcı rozeti</div><div>✓ Yeni özelliklere öncelikli erişim</div></div><p style="border:1px solid #6d572f;background:#302719;padding:10px;border-radius:8px;color:#f4dca7">Gerçek ödeme sistemi bağlı değil. Bu düğme yalnızca sunucuda izin verilen test hesabına Test Pro verir.</p><p id="testProMessage" role="status">Test Pro durumunu kontrol etmek için giriş yap.</p><div class="modal-actions"><button class="btn" onclick="checkTestPro()">Durumu kontrol et</button><button class="btn primary" onclick="enableTestPro()">Test Pro’yu etkinleştir</button><button class="btn" onclick="closePro()">Kapat</button></div></div></div>
 <div class="modal-bg" id="aiModal"><div class="modal"><h2>✦ Yapay zekâ ile site taslağı</h2><p>Site fikrini yaz. Gerçek AI için sunucu bağlantısı gerekir. Oluşan taslağı daha sonra tasarım ve kod araçlarıyla düzenleyebilirsin.</p><textarea id="aiPromptModal" placeholder="Örn. Bir teknoloji danışmanlığı şirketi için profesyonel site..."></textarea><div class="modal-actions"><button class="btn" onclick="closeAi()">Vazgeç</button><button class="btn primary" onclick="generateFromModal()">Taslağı oluştur</button></div></div></div>
 <div class="modal-bg" id="authModal"><div class="modal"><h2 id="authTitle">WebForge hesabına giriş yap</h2><p id="authDescription">E-posta adresin ve şifrenle giriş yap veya yeni hesap oluştur.</p><label class="field"><span>E-posta</span><input id="authEmail" type="email" autocomplete="email" placeholder="ornek@mail.com"></label><label class="field"><span>Şifre</span><input id="authPassword" type="password" autocomplete="current-password" placeholder="En az 6 karakter"></label><p id="authMessage" role="status"></p><div class="modal-actions"><button class="btn" onclick="closeAuth()">Kapat</button><button class="btn" id="authModeButton" onclick="toggleAuthMode()">Hesap oluştur</button><button class="btn primary" id="authSubmitButton" onclick="submitAuth()">Giriş yap</button></div><p class="tiny">Supabase bağlantısı henüz yapılandırılmadıysa giriş çalışmaz. E-posta/şifre bilgilerin WebForge sunucusuna gönderilmez; Supabase Auth kullanılır.</p></div></div>
 <div class="toast" id="toast"></div>
@@ -135,8 +135,32 @@ function applyCode(){customHTML=$('codeEditor').value;try{$('page').innerHTML=cu
 function saveProject(){localStorage.setItem('webforge_project_v1',JSON.stringify({blocks,brand:document.querySelector('.page-header strong')?.textContent||'Nova Studio'}));toast('Proje bu tarayıcıya kaydedildi.');$('saveStatus').textContent='● Kaydedildi'}
 function loadProject(){const raw=localStorage.getItem('webforge_project_v1');if(!raw){toast('Bu tarayıcıda kayıtlı proje bulunamadı.');return}try{const data=JSON.parse(raw);blocks=data.blocks||structuredClone(initialBlocks);selectedId=blocks[0]?.id||null;render();toast('Proje yüklendi.')}catch(e){toast('Kayıt okunamadı.')}}
 function newProject(){if(!confirm('Mevcut taslağı yeni proje ile değiştirmek istiyor musun?'))return;snapshot();blocks=[];selectedId=null;customHTML=null;render();toast('Boş proje hazır. Sol menüden bileşen ekle.')}
-function openPro(){$('proModal').classList.add('open')}
+function openPro(){$('proModal').classList.add('open');checkTestPro()}
 function closePro(){$('proModal').classList.remove('open')}
+async function getAccessToken(){
+  if(!initSupabase()) return null;
+  const {data}=await supabaseClient.auth.getSession();
+  return data?.session?.access_token || null;
+}
+async function checkTestPro(){
+  const message=$('testProMessage');message.textContent='Sunucu kontrol ediliyor…';
+  const token=await getAccessToken();
+  if(!token){message.textContent='Önce WebForge hesabına giriş yap.';return;}
+  try{
+    const response=await fetch((location.hostname.endsWith('github.io')?'https://webforge-ai-hasanyetisir7.onrender.com':'')+'/api/pro/status',{headers:{Authorization:'Bearer '+token}});
+    const data=await response.json();if(!response.ok)throw new Error(data?.error||'Test Pro durumu alınamadı.');
+    message.textContent=data.isPro?'✓ Test Pro hesabında etkin (sunucu tarafından doğrulandı).':'Bu hesap test Pro izin listesinde değil.';
+  }catch(error){message.textContent=error.message||'Sunucuya bağlanılamadı.'}
+}
+async function enableTestPro(){
+  const message=$('testProMessage');message.textContent='Test hesabı doğrulanıyor…';
+  const token=await getAccessToken();if(!token){message.textContent='Önce WebForge hesabına giriş yap.';return;}
+  try{
+    const response=await fetch((location.hostname.endsWith('github.io')?'https://webforge-ai-hasanyetisir7.onrender.com':'')+'/api/pro/test-enable',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:'{}'});
+    const data=await response.json();if(!response.ok)throw new Error(data?.error||'Test Pro etkinleştirilemedi.');
+    message.textContent='✓ '+data.message+' Günlük AI limiti test hesabı için 100 isteğe çıkarıldı.';
+  }catch(error){message.textContent=error.message||'Sunucuya bağlanılamadı.'}
+}
 function openAi(){$('aiModal').classList.add('open');$('aiPromptModal').value=$('aiPrompt').value}
 function closeAi(){$('aiModal').classList.remove('open')}
 function generateFromModal(){$('aiPrompt').value=$('aiPromptModal').value;closeAi();generateFromPrompt()}
@@ -158,7 +182,7 @@ async function generateFromPrompt(){
  const original=btn?.textContent;
  if(btn){btn.disabled=true;btn.textContent='✦ AI taslağı hazırlıyor…'}
  try{
-   const response=await fetch((location.hostname.endsWith('github.io') ? 'https://webforge-ai-hasanyetisir7.onrender.com' : '')+'/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt,currentHtml:typeof customHTML==='string'?customHTML:''})});
+   const accessToken=await getAccessToken();\n    const headers={'Content-Type':'application/json'};if(accessToken)headers.Authorization='Bearer '+accessToken;\n    const response=await fetch((location.hostname.endsWith('github.io') ? 'https://webforge-ai-hasanyetisir7.onrender.com' : '')+'/api/generate',{method:'POST',headers,body:JSON.stringify({prompt,currentHtml:typeof customHTML==='string'?customHTML:''})});
    const data=await response.json();
    if(!response.ok) throw new Error(data?.error || ('AI sunucusu yanıt vermedi ('+response.status+').'));
    if(data.type==='chat' && typeof data.reply==='string'){
